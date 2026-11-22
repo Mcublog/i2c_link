@@ -21,10 +21,6 @@ file(GLOB_RECURSE SOFT_TIMER_SOURCES
     ${PROJECT_SOURCE_DIR}/libs/SoftwareTimer/SoftTimers.c
 )
 
-file(GLOB_RECURSE DWT_SOURCES
-    ${PROJECT_SOURCE_DIR}/libs/hw/dwt/dwt.c
-)
-
 set(COBS_INCLUDES
     ${PROJECT_SOURCE_DIR}/libs/cobs-c
 )

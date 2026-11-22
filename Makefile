@@ -26,7 +26,7 @@ prepare:
 	-DCMAKE_CXX_COMPILER=arm-none-eabi-g++ ..
 
 firmwares: prepare
-	cd $(BUILD_DIR) && make mcu_fw $(JFLAGS)
+	cd $(BUILD_DIR) && make fntester_pcb $(JFLAGS)
 
 emuls: prepare
 	cd $(BUILD_DIR) && make emu $(JFLAGS)

@@ -1,7 +1,7 @@
 set(APP     app)
 set(APP_FW  app_fw)
 # region GLOBAL PROPERTIES
-set(STM32F407_TARGET_PATH           ${PROJECT_SOURCE_DIR}/targets/ws407)
+set(FNTESTER_PCB_TARGET_PATH        ${PROJECT_SOURCE_DIR}/targets/fntester_pcb)
 set(DESKTOP_TARGET_PATH             ${PROJECT_SOURCE_DIR}/targets/emu)
 
 set(APP_DIR     ${PROJECT_SOURCE_DIR}/app)

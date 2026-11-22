@@ -9,7 +9,7 @@ set -euo pipefail
 
 export PYTHONUNBUFFERED=1
 
-TARGET="STM32F407VE"
+TARGET="STM32F072CB"
 CMD=""
 WAIT=10
 OUT=""
@@ -19,7 +19,7 @@ usage() {
     cat <<EOF
 Usage: rtt_run.sh [-t TARGET] [-c CMD] [-w SECONDS] [-o FILE] [-p] [-h]
 
-  -t TARGET   target chip name (default: STM32F407VE)
+  -t TARGET   target chip name (default: STM32F072CB)
   -c CMD      console command to send (e.g. reset); empty = read only
   -w SECONDS  run time in seconds (default: 10)
   -o FILE     write output to FILE (default: stdout)

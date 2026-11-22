@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# flash_run.sh - прошивка платы ws407 (STM32F407VE) через J-Link.
+# flash_run.sh - прошивка платы fntester_pcb (STM32F072CB) через J-Link.
 # Находит JLink-скрипт, сгенерированный CMake из cmake/burn.jlink.in,
 # запускает JLinkExe и проверяет результат.
 #
@@ -13,7 +13,7 @@ SN=""
 OUT=""
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJ_DIR="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
-JLINK_SCRIPT="targets/ws407/mcu_fw.jlink"
+JLINK_SCRIPT="targets/fntester_pcb/fntester_pcb.jlink"
 
 usage() {
     cat <<EOF
@@ -45,7 +45,7 @@ fi
 script="$build_root/$JLINK_SCRIPT"
 if [[ ! -f "$script" ]]; then
     echo "error: $script not found" >&2
-    echo "run: ninja -C $BUILD_DIR (regenerates .jlink and .hex)" >&2
+    echo "build first: cmake --build $BUILD_DIR (regenerates .jlink and .hex)" >&2
     exit 1
 fi
 

@@ -17,7 +17,7 @@ endif()
 
 include(cmake/utils.cmake)
 
-project(mcu_project_template VERSION 0.1.0 LANGUAGES C CXX ASM)
+project(i2c_link VERSION 0.1.0 LANGUAGES C CXX ASM)
 
 LOG_INFO("Version:.........." ${CMAKE_PROJECT_VERSION})
 LOG_INFO("Host system:......" ${CMAKE_SYSTEM_NAME})

@@ -1,9 +1,9 @@
-file(GLOB_RECURSE BSP_WS407_SOURCES
-    ${PROJECT_SOURCE_DIR}/bsp/ws407/*.c
-    ${PROJECT_SOURCE_DIR}/bsp/ws407/*.cpp
+file(GLOB_RECURSE BSP_FNTESTER_PCB_SOURCES
+    ${PROJECT_SOURCE_DIR}/bsp/fntester_pcb/*.c
+    ${PROJECT_SOURCE_DIR}/bsp/fntester_pcb/*.cpp
 )
 
-set(BSP_WS407_INCLUDES ${PROJECT_SOURCE_DIR}/bsp/ws407)
+set(BSP_FNTESTER_PCB_INCLUDES ${PROJECT_SOURCE_DIR}/bsp/fntester_pcb)
 
 file(GLOB_RECURSE BSP_DESKTOP_SOURCES
     ${PROJECT_SOURCE_DIR}/bsp/desktop/impl/*.c

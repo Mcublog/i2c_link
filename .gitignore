@@ -1,6 +1,6 @@
 build/
-targets/ws407/.mxproject
-targets/ws407/Makefile
+targets/fntester_pcb/.mxproject
+targets/fntester_pcb/Makefile
 env/
 *.egg-info
 *.pyc
