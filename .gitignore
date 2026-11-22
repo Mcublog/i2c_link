@@ -1,0 +1,9 @@
+build/
+targets/ws407/.mxproject
+targets/ws407/Makefile
+env/
+*.egg-info
+*.pyc
+__pycache__
+.cache/
+Testing/Temporary/

@@ -1,0 +1,13 @@
+file(GLOB_RECURSE BSP_WS407_SOURCES
+    ${PROJECT_SOURCE_DIR}/bsp/ws407/*.c
+    ${PROJECT_SOURCE_DIR}/bsp/ws407/*.cpp
+)
+
+set(BSP_WS407_INCLUDES ${PROJECT_SOURCE_DIR}/bsp/ws407)
+
+file(GLOB_RECURSE BSP_DESKTOP_SOURCES
+    ${PROJECT_SOURCE_DIR}/bsp/desktop/impl/*.c
+    ${PROJECT_SOURCE_DIR}/bsp/desktop/impl/*.cpp
+)
+
+set(BSP_DESKTOP_INCLUDES ${PROJECT_SOURCE_DIR}/bsp/desktop/impl)

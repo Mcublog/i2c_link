@@ -1,0 +1,14 @@
+file(GLOB_RECURSE ARCH_F407_SOURCES
+    ${PROJECT_SOURCE_DIR}/arch/stm32f407/*.c
+    ${PROJECT_SOURCE_DIR}/arch/stm32f407/*.cpp
+)
+
+set(ARCH_F407_INCLUDES ${PROJECT_SOURCE_DIR}/arch/stm32f407)
+
+
+file(GLOB_RECURSE ARCH_DESKTOP_SOURCES
+    ${PROJECT_SOURCE_DIR}/arch/desktop/*.c
+    ${PROJECT_SOURCE_DIR}/arch/desktop/*.cpp
+)
+
+set(ARCH_DESKTOP_INCLUDES ${PROJECT_SOURCE_DIR}/arch/desktop)

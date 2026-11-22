@@ -1,0 +1,40 @@
+cmake_minimum_required(VERSION 3.22)
+
+set_property(GLOBAL PROPERTY RULE_MESSAGES OFF)
+
+# Setup compiler settings
+set(CMAKE_TRY_COMPILE_TARGET_TYPE   "STATIC_LIBRARY")
+set(CMAKE_C_STANDARD                11)
+set(CMAKE_C_STANDARD_REQUIRED       ON)
+set(CMAKE_C_EXTENSIONS              ON)
+set(CMAKE_CXX_STANDARD              20)
+set(CMAKE_CXX_STANDARD_REQUIRED     ON)
+set(CMAKE_CXX_EXTENSIONS            ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS   ON)
+if(NOT ${CMAKE_HOST_SYSTEM_NAME} MATCHES "Linux")
+    set(CMAKE_SYSTEM_NAME           Generic) # workaround for Windows
+endif()
+
+include(cmake/utils.cmake)
+
+project(mcu_project_template VERSION 0.1.0 LANGUAGES C CXX ASM)
+
+LOG_INFO("Version:.........." ${CMAKE_PROJECT_VERSION})
+LOG_INFO("Host system:......" ${CMAKE_SYSTEM_NAME})
+LOG_INFO("Build type:......." ${CMAKE_BUILD_TYPE})
+
+add_subdirectory(cmake)
+add_subdirectory(targets)
+add_subdirectory(utils)
+
+# Added color compiler output
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+    add_compile_options(-fdiagnostics-color=always)
+elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+    add_compile_options(-fcolor-diagnostics)
+endif()
+
+# region Tests
+enable_testing()
+add_subdirectory(test)
+# endregion
