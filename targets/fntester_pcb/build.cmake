@@ -57,6 +57,8 @@ function(fw_application_extra_opt targetname extra_opt)
         ${BSP_FNTESTER_PCB_INCLUDES}
         ${FNTESTER_PCB_HAL_INCLUDE_DIR}
         ${RINGFS_INCLUDES}
+        ${COBS_INCLUDES}
+        ${RING_BUFFER_INCLUDES}
         ${SERDEV_INCLUDES}
     )
 

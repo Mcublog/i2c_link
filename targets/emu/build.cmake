@@ -36,6 +36,8 @@ function(emu_build targetname)
         ${PROJECT_SOURCE_DIR}/libs/debug
         ${ARCH_DESKTOP_INCLUDES}
         ${RINGFS_INCLUDES}
+        ${COBS_INCLUDES}
+        ${RING_BUFFER_INCLUDES}
         ${SERDEV_INCLUDES}
     )
 

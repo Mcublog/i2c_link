@@ -4,6 +4,9 @@
 Проект — мост между последовательными интерфейсами (UART / USB VCP / внешний
 Ethernet) и I2C на плате **fntester_pcb** (STM32F072CB).
 
+Обмен между хостом и I2C идёт по бинарному протоколу (COBS/R + CRC-16):
+спецификация — `docs/data/protocol.md`.
+
 Содержит готовую структуру проекта и систему сборки на **CMake** для трёх
 типов целей:
 
@@ -11,6 +14,19 @@ Ethernet) и I2C на плате **fntester_pcb** (STM32F072CB).
 - **Emulator** (`targets/emu`) — эмуляция прошивки на хосте;
 - **Firmware** (`targets/fntester_pcb`) — прошивка под плату fntester_pcb
   (STM32F072CB, CubeMX + HAL).
+
+Сторонние библиотеки подключены как git-сабмодули:
+
+- `libs/Ring-Buffer` — кольцевой буфер (Mcublog);
+- `libs/cobs-c` — COBS/COBS-R (cmcqueen).
+
+После клонирования их нужно инициализировать:
+
+```sh
+git clone --recurse-submodules <repo>
+# или, если репозиторий уже склонирован:
+git submodule update --init --recursive
+```
 
 ## Структура проекта
 
@@ -39,9 +55,17 @@ i2c_link/
 
 - **`app/`** — только платформонезависимый код: интерфейсы подсистем
   (`storage.h`, `igpio.h`, `systime.h` и т.д.) и логика приложения.
-  Никаких зависимостей от железа или ОС.
+  Никаких зависимостей от железа или ОС. Ключевые подсистемы:
+  - `app/proto/` — кадрирование и канальный уровень протокола
+    (`proto.h`, `frame.*`, `link.*`);
+  - `app/i2c/` — интерфейс шины (`ii2c.h`) и обработчики команд
+    (`i2c_service.*`);
+  - `app/io/itransport.h` — интерфейс транспорта (USB VCP / сокет).
 - **`bsp/`** — реализации под конкретную плату/платформу. Интерфейс
   объявляется в `app/`, реализация — в `bsp/<платформа>/`.
+  - `bsp/fntester_pcb/impl/i2c.cpp` — I2C2 на HAL и восстановление шины;
+  - `bsp/fntester_pcb/impl/transport.c` — USB VCP;
+  - `bsp/desktop/impl/` — эмуляция I2C и транспорт через UNIX-сокет.
 - **`arch/`** — низкоуровневые модули (критические секции, эмуляция
   времени, задержки). `arch/desktop/` — хост, `arch/stm32f072/` — МК.
 - **`test/`** — юнит-тесты, собираются и запускаются на хосте. Один тест —
@@ -83,9 +107,11 @@ CubeMX (`Core/`, `Drivers/`, `USB_DEVICE/`, `Middlewares/`, startup, `.ld`)
 подхватываются CMake автоматически; после перегенерации CubeMX нужно
 перезапустить CMake.
 
-USB VCP транспорт: `arch/stm32f072/UsbSerial.*` (интерфейс `Serial` из
-`libs/serdev`) + `arch/stm32f072/io/usb_vcp.c`. Подробности и чек-лист
-настроек CubeMX — в `targets/fntester_pcb/README.md`.
+USB VCP транспорт: приложение работает через `app/io/itransport.h`,
+реализация для платы — `bsp/fntester_pcb/impl/transport.c` поверх
+`usb_vcp_*`. Абстракция `Serial` из `libs/serdev` и
+`arch/stm32f072/UsbSerial.*` остаются альтернативным транспортом.
+Подробности и чек-лист настроек CubeMX — в `targets/fntester_pcb/README.md`.
 
 Если каталог `targets/fntester_pcb/Core/Src/main.c` отсутствует, цель
 прошивки не создаётся, а `make firmwares` выводит предупреждение.
@@ -100,7 +126,23 @@ USB VCP транспорт: `arch/stm32f072/UsbSerial.*` (интерфейс `Se
 | `fntester_pcb`           | прошивка fntester_pcb (+ `.hex`/`.bin`) |
 | `hello`                  | хост-утилита (пример)                 |
 | `utest_smoke`            | простейший юнит-тест                  |
+| `utest_proto`            | тесты протокола host <-> I2C          |
 | `dbg_sandbox`            | песочница для экспериментов           |
+
+## Протокол и эмулятор
+
+Обмен хост <-> I2C описан в `docs/data/protocol.md`: COBS/R с
+терминатором `0x00`, CRC-16/CCITT-FALSE, команды `READ`, `WRITE`, `SCAN`,
+`INFO`, `PING`, `BUS_RECOVER`, `STATS`.
+
+Приём из транспорта копится в кольцевом буфере (`libs/Ring-Buffer`) и
+разбирается в основном цикле `application()`; ответы складываются в
+кольцевой буфер передачи и выталкиваются с повтором, если транспорт занят.
+
+Эмулятор принимает одно подключение по UNIX-сокету (по умолчанию
+`/tmp/i2c_link.sock`, переопределяется переменной `I2C_LINK_EP`) и
+эмулирует два I2C-устройства: `0x0C` и `0x50` (регистровый файл по
+256 байт).
 
 ## Как добавить
 

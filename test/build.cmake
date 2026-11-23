@@ -44,6 +44,8 @@ function(test_target_with_main_entry targetname defines_ext includes_ext sources
         ${PROJECT_SOURCE_DIR}/libs/debug
         ${ARCH_DESKTOP_INCLUDES}
         ${RINGFS_INCLUDES}
+        ${COBS_INCLUDES}
+        ${RING_BUFFER_INCLUDES}
         ${SERDEV_INCLUDES}
     )
 

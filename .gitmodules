@@ -1,0 +1,6 @@
+[submodule "libs/Ring-Buffer"]
+	path = libs/Ring-Buffer
+	url = https://github.com/Mcublog/Ring-Buffer.git
+[submodule "libs/cobs-c"]
+	path = libs/cobs-c
+	url = https://github.com/cmcqueen/cobs-c.git

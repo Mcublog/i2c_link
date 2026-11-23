@@ -19,6 +19,7 @@
 //>>---------------------- Local
 #ifdef HAL_PCD_MODULE_ENABLED
 #include "usbd_cdc_if.h"
+extern USBD_HandleTypeDef hUsbDeviceFS;
 static ios_irq_handler_t m_irq_handler = NULL;
 #endif
 //<<----------------------
@@ -45,6 +46,17 @@ bool usb_vcp_write(const uint8_t *data, uint32_t size)
 #else
     (void)data;
     (void)size;
+    return false;
+#endif
+}
+
+bool usb_vcp_tx_ready(void)
+{
+#ifdef HAL_PCD_MODULE_ENABLED
+    USBD_CDC_HandleTypeDef *hcdc =
+        (USBD_CDC_HandleTypeDef *)hUsbDeviceFS.pClassData;
+    return (hcdc != NULL) && (hcdc->TxState == 0);
+#else
     return false;
 #endif
 }

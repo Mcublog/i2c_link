@@ -38,12 +38,16 @@ cmake --build build -j
 - `USB_DEVICE/App/usbd_cdc_if.c` — принятые по VCP данные передаются в
   `usb_vcp_irq_handler()`.
 
-USB VCP транспорт:
+Приложение работает через транспортный интерфейс `app/io/itransport.h`:
 
-- `arch/stm32f072/hw/usb_vcp.h` + `arch/stm32f072/io/usb_vcp.c` —
-  низкоуровневый слой (`CDC_Transmit_FS`, приём из `CDC_Receive_FS`);
-- `arch/stm32f072/UsbSerial.hpp/.cpp` — реализация интерфейса
-  `Serial` из `libs/serdev`.
+- `bsp/fntester_pcb/impl/transport.c` — обёртка над `usb_vcp_*`, буфер
+  передачи копируется только когда передатчик USB свободен
+  (`usb_vcp_tx_ready`);
+- `arch/stm32f072/io/usb_vcp.c` — низкоуровневый слой (`CDC_Transmit_FS`,
+  приём из `CDC_Receive_FS`);
+- `arch/stm32f072/UsbSerial.hpp/.cpp` — альтернативная реализация
+  интерфейса `Serial` из `libs/serdev`;
+- `bsp/fntester_pcb/impl/i2c.cpp` — I2C2 на HAL и восстановление шины.
 
 ## UART
 

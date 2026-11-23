@@ -1,3 +1,10 @@
+if(NOT EXISTS ${PROJECT_SOURCE_DIR}/libs/cobs-c/cobsr.c OR
+   NOT EXISTS ${PROJECT_SOURCE_DIR}/libs/Ring-Buffer/ringbuffer.c)
+    message(FATAL_ERROR
+        "Сабмодули не инициализированы. Выполните: "
+        "git submodule update --init --recursive")
+endif()
+
 set(LOG_DEBUG_INCLUDES
     ${PROJECT_SOURCE_DIR}/libs/debug
 )

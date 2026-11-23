@@ -28,6 +28,16 @@ extern "C"
     bool usb_vcp_write(const uint8_t *data, uint32_t size);
 
     /**
+     * @brief Проверить, свободен ли передатчик USB VCP
+     *
+     * Возвращает true, когда предыдущая передача завершена и буфер
+     * данных больше не используется USB-стеком.
+     *
+     * @return true - можно начинать новую передачу
+     */
+    bool usb_vcp_tx_ready(void);
+
+    /**
      * @brief Обработчик принятых по USB данных
      *
      * Вызывается из CDC_Receive_FS (USER CODE).
