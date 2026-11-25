@@ -131,4 +131,9 @@ bool transport_write(const uint8_t *data, uint32_t size)
 
     return device_instance().write(data, size);
 }
+
+void transport_poll(void)
+{
+    // NOTE: сокет-транспорт обслуживается отдельным потоком чтения
+}
 //<<----------------------

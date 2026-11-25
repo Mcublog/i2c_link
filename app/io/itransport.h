@@ -40,6 +40,14 @@ extern "C"
      */
     bool transport_write(const uint8_t *data, uint32_t size);
 
+    /**
+     * @brief Обработать события транспорта
+     *
+     * Вызывается регулярно из главного цикла. Для USB-транспорта здесь
+     * обслуживается стек устройства, для остальных реализаций - no-op.
+     */
+    void transport_poll(void);
+
 #ifdef __cplusplus
 }
 #endif

@@ -1,0 +1,6 @@
+{
+    "task.autoDetect": "off",
+    "cmake.buildDirectory": "${workspaceFolder}/build",
+    "C_Cpp.errorSquiggles": "disabled",
+    "diffEditor.ignoreTrimWhitespace": false
+}

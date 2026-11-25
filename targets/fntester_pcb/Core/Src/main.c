@@ -23,7 +23,6 @@
 #include "i2c.h"
 #include "rtc.h"
 #include "tim.h"
-#include "usb_device.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -102,7 +101,6 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_DMA_Init();
-  MX_USB_DEVICE_Init();
   MX_RTC_Init();
   MX_TIM7_Init();
   MX_TIM6_Init();

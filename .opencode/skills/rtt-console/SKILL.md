@@ -46,10 +46,10 @@ description: >-
 
 ## Helper-скрипт
 
-В комплекте скила есть обёртка `scripts/rtt_run.sh`. Она запускает
+В проекте есть обёртка `scripts/rtt.sh`. Она запускает
 rtt-console с timeout, подаёт команду через stdin и сохраняет вывод.
 
-    scripts/rtt_run.sh -h        # справка
+    scripts/rtt.sh -h        # справка
 
 Параметры:
 - `-t TARGET` — имя чипа (по умолчанию STM32F072CB);
@@ -62,15 +62,15 @@ rtt-console с timeout, подаёт команду через stdin и сохр
 
 ### Снять текущее состояние (без сброса)
 
-    scripts/rtt_run.sh -w 8 -o state.log
+    scripts/rtt.sh -w 8 -o state.log
 
 ### Сбросить плату и снять boot-логи
 
-    scripts/rtt_run.sh -c reset -w 20 -o boot.log
+    scripts/rtt.sh -c reset -w 20 -o boot.log
 
 ### Питание таргета через J-Link
 
-    scripts/rtt_run.sh -p -c reset -w 15 -o boot.log
+    scripts/rtt.sh -p -c reset -w 15 -o boot.log
 
 ## Анализ логов
 

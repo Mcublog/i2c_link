@@ -52,3 +52,17 @@ file(GLOB_RECURSE SERDEV_SOURCES
     ${PROJECT_SOURCE_DIR}/libs/serdev/src/*.c
     ${PROJECT_SOURCE_DIR}/libs/serdev/src/*.cpp
 )
+# TinyUSB: только device-стек и используемые классы.
+# Собирается только в прошивке (в тестах не нужен).
+set(TINYUSB_INCLUDES
+    ${PROJECT_SOURCE_DIR}/libs/tinyusb/src
+)
+file(GLOB_RECURSE TINYUSB_SOURCES
+    ${PROJECT_SOURCE_DIR}/libs/tinyusb/src/tusb.c
+    ${PROJECT_SOURCE_DIR}/libs/tinyusb/src/common/tusb_fifo.c
+    ${PROJECT_SOURCE_DIR}/libs/tinyusb/src/device/usbd.c
+    ${PROJECT_SOURCE_DIR}/libs/tinyusb/src/class/cdc/cdc_device.c
+    ${PROJECT_SOURCE_DIR}/libs/tinyusb/src/class/vendor/vendor_device.c
+    ${PROJECT_SOURCE_DIR}/libs/tinyusb/src/portable/st/stm32_fsdev/dcd_stm32_fsdev.c
+    ${PROJECT_SOURCE_DIR}/libs/tinyusb/src/portable/st/stm32_fsdev/fsdev_common.c
+)
