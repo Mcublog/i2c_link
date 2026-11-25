@@ -1,0 +1,12 @@
+# Привязка mainline-драйвера i2c-tiny-usb к нашему VID/PID.
+#
+# Установка (однократно):
+#   sudo install -m 755 scripts/i2c-tiny-usb-bind.sh \
+#        /usr/local/bin/i2c-tiny-usb-bind
+#   sudo install -m 644 scripts/99-i2c-tiny-usb.rules \
+#        /etc/udev/rules.d/99-i2c-tiny-usb.rules
+#   sudo udevadm control --reload-rules
+#
+# После этого при каждом подключении платы появляется /dev/i2c-N.
+
+ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="0483", ATTR{idProduct}=="5740", RUN+="/usr/local/bin/i2c-tiny-usb-bind 0483 5740"

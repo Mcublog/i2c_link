@@ -137,6 +137,7 @@ void application()
 
     while (1)
     {
+        transport_poll();
         process_transport();
 
         if (systime_is_need_to_init())

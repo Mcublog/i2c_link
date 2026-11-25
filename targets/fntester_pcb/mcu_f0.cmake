@@ -12,16 +12,6 @@ set(FNTESTER_PCB_HAL_INCLUDE_DIR
     ${FNTESTER_PCB_CUBE_DIR}/Drivers/CMSIS/Device/ST/STM32F0xx/Include
     ${FNTESTER_PCB_CUBE_DIR}/Drivers/CMSIS/Include
 )
-
-# USB Device (CDC/VCP): пути появляются только после генерации CubeMX
-if(EXISTS ${FNTESTER_PCB_CUBE_DIR}/Middlewares/ST/STM32_USB_Device_Library)
-    list(APPEND FNTESTER_PCB_HAL_INCLUDE_DIR
-        ${FNTESTER_PCB_CUBE_DIR}/USB_DEVICE/App
-        ${FNTESTER_PCB_CUBE_DIR}/USB_DEVICE/Target
-        ${FNTESTER_PCB_CUBE_DIR}/Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc
-        ${FNTESTER_PCB_CUBE_DIR}/Middlewares/ST/STM32_USB_Device_Library/Core/Inc
-    )
-endif()
 # endregion
 
 # Put here your symbols (preprocessor defines), one in each line

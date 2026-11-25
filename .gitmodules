@@ -4,3 +4,6 @@
 [submodule "libs/cobs-c"]
 	path = libs/cobs-c
 	url = https://github.com/cmcqueen/cobs-c.git
+[submodule "libs/tinyusb"]
+	path = libs/tinyusb
+	url = https://github.com/hathach/tinyusb.git

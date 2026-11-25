@@ -4,6 +4,12 @@ include(${PROJECT_SOURCE_DIR}/libs/hw/third_party/third_party.cmake)
 include(${PROJECT_SOURCE_DIR}/arch/arch.cmake)
 include(${PROJECT_SOURCE_DIR}/bsp/bsp.cmake)
 
+if(NOT EXISTS ${PROJECT_SOURCE_DIR}/libs/tinyusb/src/tusb.c)
+    message(FATAL_ERROR
+        "Сабмодуль TinyUSB не инициализирован. Выполните: "
+        "git submodule update --init --recursive")
+endif()
+
 function(fw_application_extra_opt targetname extra_opt)
     set(FW_DEFINES
         ${FW_DEFINES}
@@ -41,6 +47,7 @@ function(fw_application_extra_opt targetname extra_opt)
         ${SOFT_TIMER_SOURCES}
         ${COBS_SOURCES}
         ${RINGFS_SOURCES}
+        ${TINYUSB_SOURCES}
     )
 
     # Include paths
@@ -60,6 +67,7 @@ function(fw_application_extra_opt targetname extra_opt)
         ${COBS_INCLUDES}
         ${RING_BUFFER_INCLUDES}
         ${SERDEV_INCLUDES}
+        ${TINYUSB_INCLUDES}
     )
 
     # Project symbols
