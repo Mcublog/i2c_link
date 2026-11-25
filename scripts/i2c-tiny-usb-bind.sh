@@ -8,7 +8,7 @@
 # автоматически).
 #
 # Использование:
-#   sudo i2c-tiny-usb-bind.sh 0483 5740
+#   sudo i2c-tiny-usb-bind.sh 1209 21c2
 set -eu
 
 VID="${1:?usage: $0 VID PID}"

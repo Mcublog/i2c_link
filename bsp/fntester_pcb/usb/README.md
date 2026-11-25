@@ -32,8 +32,12 @@ IAD на CDC-функцию обязателен: он же защищает о�
 
 ## Linux
 
+Устройство представляется как `0x1209:0x21C2` (VID pid.codes для open
+source hardware, PID не занят в опубликованном списке; при публикации
+продукта PID нужно зарегистрировать на https://pid.codes).
+
 Драйвер `i2c_tiny_usb` знает только `0x0403:0xc631` и `0x1c40:0x0534`,
-поэтому наш `0x0483:0x5740` добавляется через `new_id`:
+поэтому наш VID/PID добавляется через `new_id`:
 
 ```
 sudo install -m 755 scripts/i2c-tiny-usb-bind.sh \
@@ -43,7 +47,7 @@ sudo install -m 644 scripts/99-i2c-tiny-usb.rules \
 sudo udevadm control --reload-rules
 ```
 
-Разово, без udev: `sudo scripts/i2c-tiny-usb-bind.sh 0483 5740`.
+Разово, без udev: `sudo scripts/i2c-tiny-usb-bind.sh 1209 21c2`.
 
 После привязки появляется `/dev/i2c-N`, работают `i2cdetect`,
 `i2cget`, `i2cset`, `i2ctransfer`.

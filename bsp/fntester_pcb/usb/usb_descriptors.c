@@ -11,10 +11,14 @@
 #include "tusb.h"
 
 //>>---------------------- Local
-/** @brief Идентификатор производителя (STMicroelectronics) */
-#define USB_VID (0x0483)
-/** @brief Идентификатор продукта (STM32 Virtual ComPort) */
-#define USB_PID (0x5740)
+// NOTE: VID 0x1209 принадлежит pid.codes (open source hardware).
+// PID 0x21C2 на момент написания не занят в опубликованном списке
+// https://pid.codes/1209/ - при публикации продукта PID нужно
+// зарегистрировать.
+/** @brief Идентификатор производителя (pid.codes) */
+#define USB_VID (0x1209)
+/** @brief Идентификатор продукта */
+#define USB_PID (0x21C2)
 
 /** @brief Номер строки: производитель */
 #define STR_IDX_MANUFACTURER (1)

@@ -9,4 +9,4 @@
 #
 # После этого при каждом подключении платы появляется /dev/i2c-N.
 
-ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="0483", ATTR{idProduct}=="5740", RUN+="/usr/local/bin/i2c-tiny-usb-bind 0483 5740"
+ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="1209", ATTR{idProduct}=="21c2", RUN+="/usr/local/bin/i2c-tiny-usb-bind 1209 21c2"
