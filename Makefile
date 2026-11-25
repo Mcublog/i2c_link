@@ -1,9 +1,19 @@
-# Директория для сборки
-BUILD_DIR = build
+# Каталоги сборки: прошивка (arm-none-eabi) и хост (нативный компилятор)
+BUILD_DIR_FW   = build/fw
+BUILD_DIR_HOST = build/host
 
 MAKEFLAGS += --no-print-directory
 
 JFLAGS := -j$(shell nproc)
+
+# Тулчейны; можно переопределить:
+#   make firmwares TOOLCHAIN_CC=/opt/arm/bin/arm-none-eabi-gcc
+TOOLCHAIN_CC  ?= arm-none-eabi-gcc
+TOOLCHAIN_CXX ?= arm-none-eabi-g++
+HOST_CC       ?= gcc
+HOST_CXX      ?= g++
+
+.PHONY: all configure firmwares emuls utils utest hwtests clean
 
 # Правило по умолчанию
 all:
@@ -12,38 +22,45 @@ all:
 	$(MAKE) utils
 	$(MAKE) utest
 
-# Правило для генерации Makefile с помощью CMake и сборки
-prepare:
-	@if [ -d $(BUILD_DIR) ]; then \
-		echo "directory exists"; \
-		exit 0; \
-	fi
+# Принудительная переконфигурация обеих сборок
+configure:
+	cmake -S . -B $(BUILD_DIR_FW) -DCMAKE_BUILD_TYPE=Release \
+		-DCMAKE_C_COMPILER=$(TOOLCHAIN_CC) \
+		-DCMAKE_CXX_COMPILER=$(TOOLCHAIN_CXX)
+	cmake -S . -B $(BUILD_DIR_HOST) -DCMAKE_BUILD_TYPE=Debug \
+		-DCMAKE_C_COMPILER=$(HOST_CC) \
+		-DCMAKE_CXX_COMPILER=$(HOST_CXX)
 
-	mkdir -p $(BUILD_DIR)
-	cd $(BUILD_DIR) && cmake \
-	-DCMAKE_BUILD_TYPE=Release \
-	-DCMAKE_C_COMPILER=arm-none-eabi-gcc \
-	-DCMAKE_CXX_COMPILER=arm-none-eabi-g++ ..
+$(BUILD_DIR_FW)/CMakeCache.txt:
+	cmake -S . -B $(BUILD_DIR_FW) -DCMAKE_BUILD_TYPE=Release \
+		-DCMAKE_C_COMPILER=$(TOOLCHAIN_CC) \
+		-DCMAKE_CXX_COMPILER=$(TOOLCHAIN_CXX)
 
-firmwares: prepare
-	cd $(BUILD_DIR) && make fntester_pcb $(JFLAGS)
+$(BUILD_DIR_HOST)/CMakeCache.txt:
+	cmake -S . -B $(BUILD_DIR_HOST) -DCMAKE_BUILD_TYPE=Debug \
+		-DCMAKE_C_COMPILER=$(HOST_CC) \
+		-DCMAKE_CXX_COMPILER=$(HOST_CXX)
 
-emuls: prepare
-	cd $(BUILD_DIR) && make emu $(JFLAGS)
+prepare_fw: $(BUILD_DIR_FW)/CMakeCache.txt
+prepare_host: $(BUILD_DIR_HOST)/CMakeCache.txt
 
-utils: prepare
-	cd $(BUILD_DIR) && make hello $(JFLAGS)
+firmwares: prepare_fw
+	$(MAKE) -C $(BUILD_DIR_FW) fntester_pcb $(JFLAGS)
 
-utest_build: prepare
-	cd $(BUILD_DIR) && make utest_all $(JFLAGS)
+emuls: prepare_host
+	$(MAKE) -C $(BUILD_DIR_HOST) emu $(JFLAGS)
 
-utest: utest_build
-	cd $(BUILD_DIR) && ctest --output-on-failure
+utils: prepare_host
+	$(MAKE) -C $(BUILD_DIR_HOST) hello $(JFLAGS)
 
-# hwtest: тесты на железе (не настроены в шаблоне, выключены по умолчанию)
+utest: prepare_host
+	$(MAKE) -C $(BUILD_DIR_HOST) utest_all $(JFLAGS)
+	ctest --test-dir $(BUILD_DIR_HOST) --output-on-failure
+
+# hwtest: тесты на железе (в сборку не входят)
 hwtests:
-	@echo "hwtest skipped (not configured; add_subdirectory(hwtest) закомментирован)"
+	@echo "hwtest skipped (not configured; see CMakeLists.txt)"
 
 # Правило для очистки
 clean:
-	rm -rf $(BUILD_DIR)
+	rm -rf build

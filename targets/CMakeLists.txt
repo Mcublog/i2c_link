@@ -1,4 +1,6 @@
-add_subdirectory(emu)
+if(I2C_LINK_HOST_TARGETS)
+    add_subdirectory(emu)
+endif()
 
 # Прошивка fntester_pcb собирается только при наличии arm-none-eabi компилятора
 # и сгенерированного проекта CubeMX (targets/fntester_pcb/Core/Src/main.c)

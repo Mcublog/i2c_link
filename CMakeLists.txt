@@ -19,13 +19,24 @@ include(cmake/utils.cmake)
 
 project(i2c_link VERSION 0.1.0 LANGUAGES C CXX ASM)
 
+# Эмулятор, утилиты и юнит-тесты рассчитаны на нативный компилятор,
+# поэтому при кросс-сборке под arm-none-eabi они не собираются.
+if(CMAKE_C_COMPILER MATCHES "arm-none-eabi")
+    set(I2C_LINK_HOST_TARGETS OFF)
+else()
+    set(I2C_LINK_HOST_TARGETS ON)
+endif()
+
 LOG_INFO("Version:.........." ${CMAKE_PROJECT_VERSION})
 LOG_INFO("Host system:......" ${CMAKE_SYSTEM_NAME})
 LOG_INFO("Build type:......." ${CMAKE_BUILD_TYPE})
 
 add_subdirectory(cmake)
 add_subdirectory(targets)
-add_subdirectory(utils)
+
+if(I2C_LINK_HOST_TARGETS)
+    add_subdirectory(utils)
+endif()
 
 # Added color compiler output
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
@@ -35,6 +46,8 @@ elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 endif()
 
 # region Tests
-enable_testing()
-add_subdirectory(test)
+if(I2C_LINK_HOST_TARGETS)
+    enable_testing()
+    add_subdirectory(test)
+endif()
 # endregion
