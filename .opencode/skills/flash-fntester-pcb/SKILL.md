@@ -42,11 +42,11 @@ J-Link PLUS по SWD. CMake генерирует готовый JLink-скрип
 
 ## Helper-скрипт
 
-В комплекте скила есть обёртка `scripts/flash_run.sh`. Она находит
+В проекте есть обёртка `scripts/flash.sh`. Она находит
 скрипт `.jlink` в `build/`, запускает `JLinkExe` с таймаутом, сохраняет
 лог и проверяет успех прошивки.
 
-    scripts/flash_run.sh -h        # справка
+    scripts/flash.sh -h        # справка
 
 Параметры:
 - `-b DIR` — каталог сборки (по умолчанию `build/`);
@@ -60,22 +60,22 @@ J-Link PLUS по SWD. CMake генерирует готовый JLink-скрип
 ### Пересобрать и прошить
 
     cmake --build build -j
-    .opencode/skills/flash-fntester-pcb/scripts/flash_run.sh
+    scripts/flash.sh
 
 Пересборка обязательна: она регенерирует `.jlink` с актуальным путём к
 hex и версией.
 
 ### Прошить без пересборки (сборка свежая)
 
-    .opencode/skills/flash-fntester-pcb/scripts/flash_run.sh -o flash.log
+    scripts/flash.sh -o flash.log
 
 ### Выбрать другой каталог сборки
 
-    .opencode/skills/flash-fntester-pcb/scripts/flash_run.sh -b /path/to/build
+    scripts/flash.sh -b /path/to/build
 
 ### Несколько J-Link — указать serial
 
-    .opencode/skills/flash-fntester-pcb/scripts/flash_run.sh -s 69665469
+    scripts/flash.sh -s 69665469
 
 ### Запустить JLinkExe напрямую
 
@@ -107,4 +107,4 @@ hex и версией.
 
 - Прошивка сбрасывает МК (`r` до и после записи, `g` запускает ядро).
 - `loadfile` стирает и перезаписывает flash целиком (128 КБ у F072CB).
-- `flash_run.sh` не пересобирает проект сам.
+- `scripts/flash.sh` не пересобирает проект сам.

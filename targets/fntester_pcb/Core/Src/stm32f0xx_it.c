@@ -162,9 +162,9 @@ void DMA1_Channel1_IRQHandler(void)
 void USB_IRQHandler(void)
 {
   /* USER CODE BEGIN USB_IRQn 0 */
-
-  /* USER CODE END USB_IRQn 0 */
+  // NOTE: прерывание обслуживает стек TinyUSB (dcd_stm32_fsdev)
   dcd_int_handler(0);
+  /* USER CODE END USB_IRQn 0 */
   /* USER CODE BEGIN USB_IRQn 1 */
 
   /* USER CODE END USB_IRQn 1 */

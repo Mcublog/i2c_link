@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 #
-# rtt_run.sh - обёртка над rtt-console: снятие логов RTT и/или подача
+# rtt.sh - обёртка над rtt-console: снятие логов RTT и/или подача
 # команды (например, аппаратный сброс платы).
 #
 # Использование:
-#   rtt_run.sh [-t TARGET] [-c CMD] [-w SECONDS] [-o FILE] [-p] [-h]
+#   rtt.sh [-t TARGET] [-c CMD] [-w SECONDS] [-o FILE] [-p] [-h]
 set -euo pipefail
 
 export PYTHONUNBUFFERED=1
@@ -17,7 +17,7 @@ PWR=0
 
 usage() {
     cat <<EOF
-Usage: rtt_run.sh [-t TARGET] [-c CMD] [-w SECONDS] [-o FILE] [-p] [-h]
+Usage: rtt.sh [-t TARGET] [-c CMD] [-w SECONDS] [-o FILE] [-p] [-h]
 
   -t TARGET   target chip name (default: STM32F072CB)
   -c CMD      console command to send (e.g. reset); empty = read only

@@ -1,0 +1,30 @@
+{
+    "version": 4,
+    "configurations": [
+        {
+            "name": "STM32F072",
+            "includePath": [
+                "${workspaceFolder}/app/**",
+                "${workspaceFolder}/targets/fntester_pcb/**",
+                "${workspaceFolder}/arch/stm32f072/**",
+                "${workspaceFolder}/bsp/fntester_pcb/**",
+                "${workspaceFolder}/libs/**"
+            ],
+            "defines": [
+                "STM32F072xB",
+                "USE_HAL_DRIVER"
+            ],
+            "cStandard": "c11",
+            "cppStandard": "c++20",
+            "intelliSenseMode": "gcc-arm",
+            "browse": {
+                "path": [
+                    "${workspaceFolder}"
+                ],
+                "limitSymbolsToIncludedHeaders": true,
+                "databaseFilename": ""
+            },
+            "compileCommands": "${workspaceFolder}/build/compile_commands.json"
+        }
+    ]
+}

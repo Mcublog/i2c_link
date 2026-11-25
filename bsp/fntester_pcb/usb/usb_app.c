@@ -23,14 +23,64 @@
 //>>---------------------- Local
 /** @brief Пауза с отключённой линией D+ при старте, мс */
 #define USB_REENUM_DELAY_MS (200)
+
+//>>---------------------- Private
+/**
+ * @brief Удерживать линию D+ в нуле, имитируя отключение от шины
+ *
+ * На плате установлен внешний pull-up на D+, поэтому обнуления
+ * USB_BCDR_DPPU недостаточно: притягиваем D+ (PA12) к земле, чтобы хост
+ * гарантированно зафиксировал отключение и заново пронумеровал
+ * устройство.
+ *
+ * @param ms длительность удержания, мс
+ */
+static void hold_disconnect(uint32_t ms)
+{
+    GPIO_InitTypeDef io = {0};
+
+    io.Pin = GPIO_PIN_12;
+    io.Mode = GPIO_MODE_OUTPUT_PP;
+    io.Pull = GPIO_NOPULL;
+    io.Speed = GPIO_SPEED_FREQ_LOW;
+    HAL_GPIO_Init(GPIOA, &io);
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, GPIO_PIN_RESET);
+
+    delay_ms(ms);
+
+    HAL_GPIO_DeInit(GPIOA, GPIO_PIN_12);
+}
+
+/**
+ * @brief Настроить тактирование USB (источник - PLL, 48 МГц)
+ *
+ * @return true - настройка выполнена
+ */
+static bool clock_init(void)
+{
+    RCC_PeriphCLKInitTypeDef periph = {0};
+
+    periph.PeriphClockSelection = RCC_PERIPHCLK_USB;
+    periph.UsbClockSelection = RCC_USBCLKSOURCE_PLL;
+
+    return HAL_RCCEx_PeriphCLKConfig(&periph) == HAL_OK;
+}
 //<<----------------------
 
 //>>---------------------- Public
 bool usb_app_init(void)
 {
-    // NOTE: ядро USB тактируется от PLL (48 МГц), настройка выполняется
-    // в SystemClock_Config() до запуска приложения
+    // NOTE: тактирование и NVIC настраиваем сами, чтобы не зависеть от
+    // кода, который генерирует CubeMX для периферии USB
+    if (!clock_init())
+    {
+        LOG_ERROR("usb clock init failed");
+        return false;
+    }
+
     __HAL_RCC_USB_CLK_ENABLE();
+    HAL_NVIC_SetPriority(USB_IRQn, 0, 0);
+    HAL_NVIC_EnableIRQ(USB_IRQn);
 
     // NOTE: после сброса без снятия питания D+ поднимается слишком
     // быстро, хост не успевает зафиксировать отключение и сохраняет
@@ -38,7 +88,7 @@ bool usb_app_init(void)
     // Принудительно держим линию отключённой, чтобы гарантировать
     // повторную энумерацию.
     USB->BCDR &= ~USB_BCDR_DPPU;
-    delay_ms(USB_REENUM_DELAY_MS);
+    hold_disconnect(USB_REENUM_DELAY_MS);
 
     tiny_usb_port_init();
 

@@ -1,23 +1,23 @@
 #!/usr/bin/env bash
 #
-# flash_run.sh - прошивка платы fntester_pcb (STM32F072CB) через J-Link.
+# flash.sh - прошивка платы fntester_pcb (STM32F072CB) через J-Link.
 # Находит JLink-скрипт, сгенерированный CMake из cmake/burn.jlink.in,
 # запускает JLinkExe и проверяет результат.
 #
 # Использование:
-#   flash_run.sh [-b BUILD_DIR] [-s SN] [-o FILE] [-h]
+#   flash.sh [-b BUILD_DIR] [-s SN] [-o FILE] [-h]
 set -euo pipefail
 
 BUILD_DIR="build"
 SN=""
 OUT=""
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJ_DIR="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
+PROJ_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 JLINK_SCRIPT="targets/fntester_pcb/fntester_pcb.jlink"
 
 usage() {
     cat <<EOF
-Usage: flash_run.sh [-b BUILD_DIR] [-s SN] [-o FILE] [-h]
+Usage: flash.sh [-b BUILD_DIR] [-s SN] [-o FILE] [-h]
 
   -b DIR   build directory (default: build/)
   -s SN    J-Link serial for -SelectEmuBySN (needed when several
