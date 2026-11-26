@@ -10,6 +10,7 @@
 #include <string.h>
 
 #include "app/i2c/islave.h"
+#include "app/io/activity.h"
 #include "app/system/icritical.h"
 //>>---------------------- Log control
 #define LOG_MODULE_NAME i2cslave
@@ -143,6 +144,7 @@ void i2c_slave_service_reset(void)
     m_await_active = false;
     m_await_seq = 0;
     queue_clear();
+    activity_end();
 }
 
 void i2c_slave_service_poll(void)

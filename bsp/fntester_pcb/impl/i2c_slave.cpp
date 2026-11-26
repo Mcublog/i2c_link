@@ -9,6 +9,7 @@
 
 #include "app/i2c/islave.h"
 #include "app/i2c/i2c_slave_service.h"
+#include "app/io/activity.h"
 
 #include "i2c.h"
 #include "main.h"
@@ -86,6 +87,7 @@ static void finish_xfer(proto_status_t status)
         status = PROTO_STATUS_TIMEOUT;
 
     i2c_slave_service_on_done(m_addr, m_write_len, m_read_len, status);
+    activity_end();
     reset_xfer();
     rearm();
 }
@@ -155,6 +157,10 @@ void i2c_slave_hw_stop(void)
 {
     if (!m_active)
         return;
+
+    // NOTE: остановка железа завершает транзакцию, поэтому индикатор
+    // активности нужно погасить, даже если колбэков HAL уже не будет
+    activity_end();
 
     m_active = false;
     HAL_NVIC_DisableIRQ(I2C2_IRQn);
@@ -226,6 +232,8 @@ extern "C"
         if (!m_active || (hi2c->Instance != I2C2))
             return;
 
+        activity_begin();
+
         m_addr = (uint8_t)((match_code >> 1) & 0x7F);
 
         if (direction == I2C_DIRECTION_TRANSMIT)
@@ -237,7 +245,10 @@ extern "C"
                                              sizeof(m_rx_buf),
                                              I2C_FIRST_AND_LAST_FRAME) !=
                 HAL_OK)
+            {
                 LOG_WARNING("slave rx start failed");
+                activity_end();
+            }
             return;
         }
 

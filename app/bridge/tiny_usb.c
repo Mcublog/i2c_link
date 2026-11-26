@@ -10,6 +10,7 @@
 #include <string.h>
 
 #include "app/i2c/ii2c.h"
+#include "app/io/activity.h"
 //>>---------------------- Log control
 #define LOG_MODULE_NAME tinyusb
 #define LOG_MODULE_LEVEL (3)
@@ -43,7 +44,9 @@ static uint8_t map_status(i2c_status_t status)
 static void read_from_bus(tiny_usb_t *ctx, uint8_t addr, uint8_t *data,
                           uint16_t len)
 {
+    activity_begin();
     i2c_status_t status = i2c_read(addr, 0, 0, data, len);
+    activity_end();
 
     ctx->status = map_status(status);
     if (status != I2C_STATUS_OK)
@@ -124,7 +127,9 @@ tiny_usb_result_t tiny_usb_setup(tiny_usb_t *ctx,
 
     if (req->length == 0)
     {
+        activity_begin();
         ctx->status = map_status(i2c_probe(addr));
+        activity_end();
         return TINY_USB_RESULT_IMMEDIATE;
     }
 
@@ -147,6 +152,9 @@ void tiny_usb_write(tiny_usb_t *ctx, const uint8_t *data, uint16_t len)
         return;
 
     ctx->write_pending = false;
+
+    activity_begin();
     ctx->status = map_status(i2c_write(ctx->addr, 0, 0, data, len));
+    activity_end();
 }
 //<<----------------------

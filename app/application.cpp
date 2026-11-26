@@ -9,6 +9,7 @@
 
 #include "app/application.h"
 
+#include "app/io/activity.h"
 #include "app/io/itransport.h"
 #include "app/io/ll/igpio.h"
 #include "app/i2c/i2c_service.h"
@@ -121,6 +122,7 @@ void application()
     systime_init();
     storage_init();
     io_gpio_init();
+    activity_init();
 
     ring_buffer_init(&m_rx_ring, (char *)m_rx_ring_buf,
                      sizeof(m_rx_ring_buf));
@@ -140,6 +142,7 @@ void application()
         transport_poll();
         i2c_service_poll();
         process_transport();
+        activity_poll();
 
         if (systime_is_need_to_init())
             systime_sync(time(nullptr));

@@ -21,7 +21,8 @@ void io_gpio_init(void)
     LOG_INFO("gpio init (desktop stub)");
 }
 
-void io_gpio_led1(bool on)
+// NOTE: weak, чтобы юнит-тесты могли подменить и проверять состояние LED
+__attribute__((weak)) void io_gpio_led1(bool on)
 {
     LOG_DEBUG("led1: %s", on ? "on" : "off");
 }

@@ -12,6 +12,7 @@
 #include "app/i2c/i2c_slave_service.h"
 #include "app/i2c/ii2c.h"
 #include "app/i2c/islave.h"
+#include "app/io/activity.h"
 #include "app/proto/link.h"
 #include "app/version.h"
 //>>---------------------- Log control
@@ -180,8 +181,11 @@ static proto_status_t map_status(i2c_status_t status)
 static void handle_read(const proto_req_t *req, proto_resp_t *resp)
 {
     uint8_t reg_size = req->flags & PROTO_REG_SIZE_MASK;
+
+    activity_begin();
     i2c_status_t status =
         i2c_read(req->addr, req->reg, reg_size, m_data, req->len);
+    activity_end();
 
     resp->status = map_status(status);
     if (status != I2C_STATUS_OK)
@@ -194,8 +198,11 @@ static void handle_read(const proto_req_t *req, proto_resp_t *resp)
 static void handle_write(const proto_req_t *req, proto_resp_t *resp)
 {
     uint8_t reg_size = req->flags & PROTO_REG_SIZE_MASK;
+
+    activity_begin();
     i2c_status_t status =
         i2c_write(req->addr, req->reg, reg_size, req->data, req->len);
+    activity_end();
 
     resp->status = map_status(status);
 }
@@ -211,7 +218,10 @@ static void handle_scan(const proto_req_t *req, proto_resp_t *resp)
         to = req->data[1];
     }
 
+    activity_begin();
     i2c_status_t status = i2c_scan(from, to, m_data);
+    activity_end();
+
     resp->status = map_status(status);
     if (status != I2C_STATUS_OK)
         return;
@@ -251,7 +261,11 @@ static void handle_ping(const proto_req_t *req, proto_resp_t *resp)
 
 static void handle_bus_recover(proto_resp_t *resp)
 {
-    resp->status = map_status(i2c_recover());
+    activity_begin();
+    i2c_status_t status = i2c_recover();
+    activity_end();
+
+    resp->status = map_status(status);
 }
 
 static void handle_stats(proto_resp_t *resp, void *ctx)
