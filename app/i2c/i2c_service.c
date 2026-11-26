@@ -9,7 +9,9 @@
 
 #include <string.h>
 
+#include "app/i2c/i2c_slave_service.h"
 #include "app/i2c/ii2c.h"
+#include "app/i2c/islave.h"
 #include "app/proto/link.h"
 #include "app/version.h"
 //>>---------------------- Log control
@@ -23,6 +25,8 @@
 #define DEFAULT_SCAN_FROM (0x08)
 /** @brief Адрес регистра по умолчанию: конец диапазона сканирования */
 #define DEFAULT_SCAN_TO (0x77)
+/** @brief Адрес slave по умолчанию */
+#define DEFAULT_SLAVE_ADDR (0x42)
 /** @brief Битовая маска поддерживаемых команд для INFO */
 #define SUPPORTED_CAPS                                                        \
     ((uint8_t)((1u << PROTO_CMD_READ) | (1u << PROTO_CMD_WRITE) |            \
@@ -36,6 +40,10 @@ static uint8_t m_data[PROTO_MAX_DATA];
 static uint16_t m_nack;
 /** @brief Счётчик таймаутов */
 static uint16_t m_timeout;
+/** @brief Текущий режим работы шины */
+static uint8_t m_mode;
+/** @brief Настроенный 7-битный адрес slave */
+static uint8_t m_slave_addr;
 //<<----------------------
 
 _Static_assert(PROTO_SCAN_BITMAP_SIZE == I2C_SCAN_BITMAP_SIZE,
@@ -103,6 +111,38 @@ static void handle_bus_recover(proto_resp_t *resp);
  * @param ctx контекст proto_link_t
  */
 static void handle_stats(proto_resp_t *resp, void *ctx);
+
+/**
+ * @brief Обработать SET_MODE
+ *
+ * @param req запрос
+ * @param resp ответ
+ */
+static void handle_set_mode(const proto_req_t *req, proto_resp_t *resp);
+
+/**
+ * @brief Обработать SET_SLAVE_ADDR
+ *
+ * @param req запрос
+ * @param resp ответ
+ */
+static void handle_set_slave_addr(const proto_req_t *req,
+                                  proto_resp_t *resp);
+
+/**
+ * @brief Обработать GET_CONFIG
+ *
+ * @param resp ответ
+ */
+static void handle_get_config(proto_resp_t *resp);
+
+/**
+ * @brief Обработать ответ хоста на событие slave-режима
+ *
+ * @param req запрос
+ * @param resp ответ
+ */
+static void handle_slave_event(const proto_req_t *req, proto_resp_t *resp);
 
 /**
  * @brief Разобрать строку версии прошивки
@@ -241,6 +281,81 @@ static void handle_stats(proto_resp_t *resp, void *ctx)
     resp->data = m_data;
 }
 
+static void handle_set_mode(const proto_req_t *req, proto_resp_t *resp)
+{
+    uint8_t mode = req->data[0];
+
+    if (mode == PROTO_MODE_MASTER)
+    {
+        i2c_slave_hw_stop();
+        i2c_slave_service_reset();
+        if (!i2c_init())
+        {
+            resp->status = PROTO_STATUS_BUS_ERROR;
+            return;
+        }
+        m_mode = mode;
+        resp->status = PROTO_STATUS_OK;
+        return;
+    }
+
+    if (mode == PROTO_MODE_SLAVE)
+    {
+        if (!i2c_slave_hw_start(m_slave_addr))
+        {
+            resp->status = PROTO_STATUS_NOT_SUPPORTED;
+            return;
+        }
+        i2c_slave_service_reset();
+        m_mode = mode;
+        resp->status = PROTO_STATUS_OK;
+        return;
+    }
+
+    resp->status = PROTO_STATUS_PARAM;
+}
+
+static void handle_set_slave_addr(const proto_req_t *req, proto_resp_t *resp)
+{
+    uint8_t addr = req->data[0];
+
+    if ((addr < I2C_SLAVE_ADDR_MIN) || (addr > I2C_SLAVE_ADDR_MAX))
+    {
+        resp->status = PROTO_STATUS_PARAM;
+        return;
+    }
+
+    if (m_mode == PROTO_MODE_SLAVE)
+    {
+        i2c_slave_hw_stop();
+        if (!i2c_slave_hw_start(addr))
+        {
+            i2c_slave_hw_start(m_slave_addr);
+            resp->status = PROTO_STATUS_NOT_SUPPORTED;
+            return;
+        }
+        i2c_slave_service_reset();
+    }
+
+    m_slave_addr = addr;
+    resp->status = PROTO_STATUS_OK;
+}
+
+static void handle_get_config(proto_resp_t *resp)
+{
+    m_data[0] = m_mode;
+    m_data[1] = m_slave_addr;
+
+    resp->len = PROTO_CONFIG_SIZE;
+    resp->data = m_data;
+}
+
+static void handle_slave_event(const proto_req_t *req, proto_resp_t *resp)
+{
+    i2c_slave_service_on_reply(req);
+    resp->status = PROTO_STATUS_OK;
+}
+
 static void parse_fw_version(uint8_t out[3])
 {
     const char *text = FW_VERSION;
@@ -275,13 +390,22 @@ static void parse_fw_version(uint8_t out[3])
 //<<----------------------
 
 //>>---------------------- Public
-void i2c_service_init(void)
+void i2c_service_init(proto_link_t *link)
 {
     m_nack = 0;
     m_timeout = 0;
+    m_mode = PROTO_MODE_MASTER;
+    m_slave_addr = DEFAULT_SLAVE_ADDR;
+
+    i2c_slave_service_init(link);
 
     if (!i2c_init())
         LOG_ERROR("i2c init failed");
+}
+
+void i2c_service_poll(void)
+{
+    i2c_slave_service_poll();
 }
 
 void i2c_service_handle(const proto_req_t *req, proto_resp_t *resp, void *ctx)
@@ -311,6 +435,18 @@ void i2c_service_handle(const proto_req_t *req, proto_resp_t *resp, void *ctx)
         break;
     case PROTO_CMD_STATS:
         handle_stats(resp, ctx);
+        break;
+    case PROTO_CMD_SET_MODE:
+        handle_set_mode(req, resp);
+        break;
+    case PROTO_CMD_SET_SLAVE_ADDR:
+        handle_set_slave_addr(req, resp);
+        break;
+    case PROTO_CMD_GET_CONFIG:
+        handle_get_config(resp);
+        break;
+    case PROTO_CMD_SLAVE_EVENT:
+        handle_slave_event(req, resp);
         break;
     default:
         resp->status = PROTO_STATUS_NOT_SUPPORTED;

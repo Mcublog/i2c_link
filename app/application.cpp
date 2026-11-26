@@ -125,7 +125,7 @@ void application()
     ring_buffer_init(&m_rx_ring, (char *)m_rx_ring_buf,
                      sizeof(m_rx_ring_buf));
     proto_link_init(&m_link, transport_send, i2c_service_handle, &m_link);
-    i2c_service_init();
+    i2c_service_init(&m_link);
 
     if (!transport_init(transport_receive))
         LOG_ERROR("transport init failed");
@@ -138,6 +138,7 @@ void application()
     while (1)
     {
         transport_poll();
+        i2c_service_poll();
         process_transport();
 
         if (systime_is_need_to_init())

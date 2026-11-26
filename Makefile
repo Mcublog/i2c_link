@@ -51,7 +51,7 @@ emuls: prepare_host
 	$(MAKE) -C $(BUILD_DIR_HOST) emu $(JFLAGS)
 
 utils: prepare_host
-	$(MAKE) -C $(BUILD_DIR_HOST) hello $(JFLAGS)
+	$(MAKE) -C $(BUILD_DIR_HOST) hello i2c-link-adapter $(JFLAGS)
 
 utest: prepare_host
 	$(MAKE) -C $(BUILD_DIR_HOST) utest_all $(JFLAGS)

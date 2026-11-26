@@ -175,6 +175,30 @@ static std::vector<uint8_t> encode_frame(const std::vector<uint8_t> &raw)
 }
 
 /**
+ * @brief Разобрать кадр с провода без требования бита направления
+ *
+ * @param wire данные с провода
+ * @param raw раскодированный кадр
+ * @return true - успешно
+ */
+static bool decode_raw(const std::vector<uint8_t> &wire,
+                       std::vector<uint8_t> *raw)
+{
+    uint8_t buf[PROTO_MAX_RAW_FRAME];
+
+    if (wire.empty() || (wire.back() != 0x00))
+        return false;
+
+    cobsr_decode_result result =
+        cobsr_decode(buf, sizeof(buf), wire.data(), wire.size() - 1);
+    if (result.status != COBSR_DECODE_OK)
+        return false;
+
+    raw->assign(buf, buf + result.out_len);
+    return true;
+}
+
+/**
  * @brief Разобрать кадр ответа с провода
  *
  * @param wire данные с провода
@@ -238,7 +262,269 @@ static void feed_request(proto_link_t *link, const std::vector<uint8_t> &raw)
     proto_link_feed(link, wire.data(), (uint32_t)wire.size());
     proto_link_poll(link);
 }
+/**
+ * @brief Сформировать сырой кадр ответного формата (устройство -> host)
+ *
+ * @param cmd команда
+ * @param msg_id номер сообщения без бита направления
+ * @param flags флаги
+ * @param addr адрес
+ * @param status статус
+ * @param data payload
+ * @param data_len длина payload
+ * @return std::vector<uint8_t> кадр
+ */
+static std::vector<uint8_t> make_response(uint8_t cmd, uint8_t msg_id,
+                                          uint8_t flags, uint8_t addr,
+                                          uint8_t status,
+                                          const uint8_t *data,
+                                          uint32_t data_len)
+{
+    std::vector<uint8_t> raw(PROTO_RESP_HDR_SIZE + data_len + PROTO_CRC_SIZE);
+
+    raw[0] = (uint8_t)((PROTO_VERSION << PROTO_VERSION_SHIFT) | cmd);
+    raw[1] = (uint8_t)(msg_id | PROTO_MSG_DIR_RESPONSE);
+    raw[2] = flags;
+    raw[3] = addr;
+    raw[4] = (uint8_t)data_len;
+    raw[5] = status;
+    if (data_len != 0)
+        memcpy(raw.data() + PROTO_RESP_HDR_SIZE, data, data_len);
+
+    uint16_t crc = proto_crc16(raw.data(), PROTO_RESP_HDR_SIZE + data_len);
+    raw[PROTO_RESP_HDR_SIZE + data_len] = (uint8_t)(crc & 0xFF);
+    raw[PROTO_RESP_HDR_SIZE + data_len + 1] = (uint8_t)(crc >> 8);
+    return raw;
+}
+
+/**
+ * @brief Пересчитать CRC после ручной правки кадра
+ *
+ * @param frame кадр без терминатора
+ */
+static void fix_crc(std::vector<uint8_t> *frame)
+{
+    uint16_t crc =
+        proto_crc16(frame->data(), (uint32_t)frame->size() - PROTO_CRC_SIZE);
+    (*frame)[frame->size() - 2] = (uint8_t)(crc & 0xFF);
+    (*frame)[frame->size() - 1] = (uint8_t)(crc >> 8);
+}
 //<<----------------------
+
+/**
+ * @brief Проверка сборки запроса и его разбора
+ */
+static void test_build_request(void)
+{
+    const uint8_t kPayload[] = {0xAA, 0x00, 0xBB};
+    proto_req_t req{};
+    uint8_t buf[PROTO_MAX_RAW_FRAME];
+
+    req.cmd = PROTO_CMD_WRITE;
+    req.msg_id = 0x13;
+    req.flags = 0x01;
+    req.addr = 0x42;
+    req.len = sizeof(kPayload);
+    req.reg = 0x1234;
+    req.data = kPayload;
+
+    uint32_t size = proto_frame_build_req(buf, sizeof(buf), &req);
+    CHECK(size == PROTO_REQ_HDR_SIZE + sizeof(kPayload) + PROTO_CRC_SIZE);
+
+    proto_req_t parsed{};
+    CHECK(proto_frame_parse(buf, size, &parsed) == PROTO_STATUS_OK);
+    CHECK(parsed.cmd == PROTO_CMD_WRITE);
+    CHECK(parsed.msg_id == 0x13);
+    CHECK(parsed.flags == 0x01);
+    CHECK(parsed.addr == 0x42);
+    CHECK(parsed.reg == 0x1234);
+    CHECK(parsed.len == sizeof(kPayload));
+    CHECK((parsed.data != nullptr) &&
+          (memcmp(parsed.data, kPayload, sizeof(kPayload)) == 0));
+
+    // READ: len задаёт число читаемых байт, payload отсутствует
+    proto_req_t read{};
+    read.cmd = PROTO_CMD_READ;
+    read.msg_id = 0x14;
+    read.addr = 0x50;
+    read.len = 0x04;
+    size = proto_frame_build_req(buf, sizeof(buf), &read);
+    CHECK(size == PROTO_REQ_HDR_SIZE + PROTO_CRC_SIZE);
+    CHECK(buf[4] == 0x04);
+    CHECK(proto_frame_parse(buf, size, &parsed) == PROTO_STATUS_OK);
+    CHECK(parsed.len == 0x04);
+
+    // ошибки сборки: нет места в буфере, нулевой payload, регистр не у READ
+    CHECK(proto_frame_build_req(buf, PROTO_REQ_HDR_SIZE, &req) == 0);
+    proto_req_t bad{};
+    bad.cmd = PROTO_CMD_SLAVE_EVENT;
+    bad.msg_id = 0x01;
+    bad.flags = 0x01;
+    bad.addr = 0x42;
+    bad.len = 1;
+    bad.data = nullptr;
+    CHECK(proto_frame_build_req(buf, sizeof(buf), &bad) == 0);
+}
+
+/**
+ * @brief Проверка разбора кадров от устройства (SLAVE_EVENT/SLAVE_DONE)
+ */
+static void test_parse_response(void)
+{
+    const uint8_t kWritten[] = {0x10, 0x20};
+    proto_resp_t evt{};
+
+    // SLAVE_EVENT: запись + ожидание чтения
+    std::vector<uint8_t> event =
+        make_response(PROTO_CMD_SLAVE_EVENT, 0x05,
+                      PROTO_EVENT_FLAG_WRITE | PROTO_EVENT_FLAG_READ, 0x42,
+                      PROTO_STATUS_OK, kWritten, sizeof(kWritten));
+    CHECK(proto_frame_parse_response(event.data(), (uint32_t)event.size(),
+                                     &evt) == PROTO_STATUS_OK);
+    CHECK(evt.cmd == PROTO_CMD_SLAVE_EVENT);
+    CHECK(evt.msg_id == 0x05);
+    CHECK(evt.flags == (PROTO_EVENT_FLAG_WRITE | PROTO_EVENT_FLAG_READ));
+    CHECK(evt.addr == 0x42);
+    CHECK(evt.status == PROTO_STATUS_OK);
+    CHECK(evt.len == sizeof(kWritten));
+    CHECK((evt.data != nullptr) &&
+          (memcmp(evt.data, kWritten, sizeof(kWritten)) == 0));
+
+    // SLAVE_DONE: две счётчика-байта
+    const uint8_t kDone[] = {0x02, 0x02};
+    std::vector<uint8_t> done =
+        make_response(PROTO_CMD_SLAVE_DONE, 0x06,
+                      PROTO_EVENT_FLAG_WRITE | PROTO_EVENT_FLAG_READ, 0x42,
+                      PROTO_STATUS_OK, kDone, sizeof(kDone));
+    CHECK(proto_frame_parse_response(done.data(), (uint32_t)done.size(),
+                                     &evt) == PROTO_STATUS_OK);
+    CHECK(evt.cmd == PROTO_CMD_SLAVE_DONE);
+    CHECK(evt.len == PROTO_SLAVE_DONE_SIZE);
+
+    // ответ на PING — тоже кадр ответного формата
+    std::vector<uint8_t> ping =
+        make_response(PROTO_CMD_PING, 0x07, 0x00, 0x00, PROTO_STATUS_OK,
+                      nullptr, 0);
+    CHECK(proto_frame_parse_response(ping.data(), (uint32_t)ping.size(),
+                                     &evt) == PROTO_STATUS_OK);
+    CHECK(evt.cmd == PROTO_CMD_PING);
+
+    // ошибки: нет бита направления, битый CRC, лишняя длина,
+    // неизвестная команда, неверная длина SLAVE_DONE
+    std::vector<uint8_t> no_dir =
+        make_response(PROTO_CMD_SLAVE_EVENT, 0x05, 0x00, 0x42,
+                      PROTO_STATUS_OK, nullptr, 0);
+    no_dir[1] &= (uint8_t)~PROTO_MSG_DIR_RESPONSE;
+    fix_crc(&no_dir);
+    CHECK(proto_frame_parse_response(no_dir.data(), (uint32_t)no_dir.size(),
+                                     &evt) == PROTO_STATUS_FRAME);
+
+    std::vector<uint8_t> bad_crc = event;
+    bad_crc[bad_crc.size() - 1] ^= 0xFF;
+    CHECK(proto_frame_parse_response(bad_crc.data(), (uint32_t)bad_crc.size(),
+                                     &evt) == PROTO_STATUS_CRC);
+
+    std::vector<uint8_t> long_frame =
+        make_response(PROTO_CMD_SLAVE_EVENT, 0x08, 0x01, 0x42,
+                      PROTO_STATUS_OK, kWritten, sizeof(kWritten));
+    long_frame[4] = 0x03; // payload заявлен больше, чем в кадре
+    fix_crc(&long_frame);
+    CHECK(proto_frame_parse_response(long_frame.data(),
+                                     (uint32_t)long_frame.size(), &evt) ==
+          PROTO_STATUS_PARAM);
+
+    std::vector<uint8_t> unknown =
+        make_response(0x0F, 0x09, 0x00, 0x42, PROTO_STATUS_OK, nullptr, 0);
+    CHECK(proto_frame_parse_response(unknown.data(), (uint32_t)unknown.size(),
+                                     &evt) == PROTO_STATUS_UNKNOWN_CMD);
+
+    std::vector<uint8_t> short_done =
+        make_response(PROTO_CMD_SLAVE_DONE, 0x0A, 0x00, 0x42, PROTO_STATUS_OK,
+                      nullptr, 0);
+    CHECK(proto_frame_parse_response(short_done.data(),
+                                     (uint32_t)short_done.size(), &evt) ==
+          PROTO_STATUS_PARAM);
+}
+
+/**
+ * @brief Проверка перенаправления кадров от устройства обработчику событий
+ */
+static void test_event_handler_dispatch(void)
+{
+    LinkCtx ctx{};
+    proto_link_t link;
+    static int s_events;
+    static proto_cmd_t s_cmd;
+
+    s_events = 0;
+    s_cmd = PROTO_CMD_PING;
+
+    auto on_event = [](const proto_resp_t *evt, void *arg) {
+        (void)arg;
+        s_events++;
+        s_cmd = evt->cmd;
+    };
+
+    init_link(&link, &ctx, echo_handler);
+    proto_link_set_event_handler(&link, on_event);
+
+    const uint8_t kWritten[] = {0x01};
+    std::vector<uint8_t> event =
+        make_response(PROTO_CMD_SLAVE_EVENT, 0x11,
+                      PROTO_EVENT_FLAG_WRITE | PROTO_EVENT_FLAG_READ, 0x42,
+                      PROTO_STATUS_OK, kWritten, sizeof(kWritten));
+    std::vector<uint8_t> wire = encode_frame(event);
+    proto_link_feed(&link, wire.data(), (uint32_t)wire.size());
+
+    CHECK(s_events == 1);
+    CHECK(s_cmd == PROTO_CMD_SLAVE_EVENT);
+    CHECK(ctx.handled == 0); // обработчик запросов не вызывался
+    CHECK(ctx.out.empty());  // и ответ никуда не ушёл
+
+    // запросы по-прежнему обрабатываются как запросы
+    feed_request(&link, make_request(PROTO_CMD_PING, 0x12, 0x00, 0x00, 0x00,
+                                     0, nullptr, 0));
+    CHECK(ctx.handled == 1);
+    CHECK(s_events == 1);
+
+    proto_resp_t resp{};
+    std::vector<uint8_t> data;
+    CHECK(parse_response(ctx.out, &resp, &data));
+    CHECK(resp.msg_id == 0x12);
+}
+
+/**
+ * @brief Проверка постановки произвольного кадра в очередь передачи
+ */
+static void test_send_frame_roundtrip(void)
+{
+    LinkCtx ctx{};
+    proto_link_t link;
+    init_link(&link, &ctx, nullptr);
+
+    const uint8_t kRead[] = {0xAA, 0xBB};
+    std::vector<uint8_t> raw =
+        make_request(PROTO_CMD_SLAVE_EVENT, 0x21, 0x00, 0x42, sizeof(kRead), 0,
+                     kRead, sizeof(kRead));
+
+    CHECK(proto_link_send_frame(&link, raw.data(), (uint32_t)raw.size()));
+    proto_link_poll(&link);
+
+    CHECK(ctx.out == encode_frame(raw));
+
+    std::vector<uint8_t> decoded;
+    CHECK(decode_raw(ctx.out, &decoded));
+    CHECK(decoded == raw);
+
+    // ответ хоста на SLAVE_EVENT — кадр запросного формата
+    proto_req_t req{};
+    CHECK(proto_frame_parse(decoded.data(), (uint32_t)decoded.size(), &req) ==
+          PROTO_STATUS_OK);
+    CHECK(req.cmd == PROTO_CMD_SLAVE_EVENT);
+    CHECK(req.msg_id == 0x21);
+    CHECK(req.len == sizeof(kRead));
+    CHECK((req.data != nullptr) && (memcmp(req.data, kRead, sizeof(kRead)) == 0));
+}
 
 //>>---------------------- Private tests
 /**
@@ -289,7 +575,8 @@ static void test_parse_errors(void)
     // неверная версия
     std::vector<uint8_t> bad_version =
         make_request(PROTO_CMD_READ, 0x01, 0x00, 0x50, 0x01, 0, nullptr, 0);
-    bad_version[0] = 0x21;
+    bad_version[0] = (uint8_t)(((PROTO_VERSION + 1) << PROTO_VERSION_SHIFT) |
+                              PROTO_CMD_READ);
     CHECK(proto_frame_parse(bad_version.data(),
                             (uint32_t)bad_version.size(), &req) ==
           PROTO_STATUS_FRAME);
@@ -511,7 +798,7 @@ static void test_i2c_service(void)
 
     m_capture = &ctx;
     proto_link_init(&link, capture_write, i2c_service_handle, &link);
-    i2c_service_init();
+    i2c_service_init(&link);
 
     static const uint8_t kData[] = {0xDE, 0xAD, 0x00, 0xBE, 0xEF};
     const uint8_t kAddr = 0x0C;
@@ -559,7 +846,7 @@ static void test_i2c_info_stats(void)
 
     m_capture = &ctx;
     proto_link_init(&link, capture_write, i2c_service_handle, &link);
-    i2c_service_init();
+    i2c_service_init(&link);
 
     proto_resp_t resp{};
     std::vector<uint8_t> data;
@@ -596,7 +883,7 @@ static void test_i2c_scan(void)
 
     m_capture = &ctx;
     proto_link_init(&link, capture_write, i2c_service_handle, &link);
-    i2c_service_init();
+    i2c_service_init(&link);
 
     static const uint8_t kRange[] = {0x00, 0x7F};
     std::vector<uint8_t> scan_req = make_request(
@@ -620,6 +907,10 @@ int main()
     test_crc_vector();
     test_parse_read();
     test_parse_errors();
+    test_build_request();
+    test_parse_response();
+    test_event_handler_dispatch();
+    test_send_frame_roundtrip();
     test_ping_roundtrip();
     test_max_payload();
     test_stream_and_resync();

@@ -102,6 +102,32 @@ static void process_frame(proto_link_t *link)
         return;
     }
 
+    // NOTE: кадр от устройства (бит направления в msg_id) — это ответ
+    // или событие slave-режима, а не запрос
+    if (link->event != NULL)
+    {
+        uint32_t size = (uint32_t)result.out_len;
+        bool is_response =
+            (size > 1) && ((link->rx_raw[1] & PROTO_MSG_DIR_RESPONSE) != 0);
+        if (is_response)
+        {
+            proto_resp_t evt;
+            proto_status_t status =
+                proto_frame_parse_response(link->rx_raw, size, &evt);
+            if (status != PROTO_STATUS_OK)
+            {
+                if (status == PROTO_STATUS_CRC)
+                    link->stats.rx_crc_err++;
+                else
+                    link->stats.rx_frame_err++;
+                return;
+            }
+            link->stats.rx_ok++;
+            link->event(&evt, link->ctx);
+            return;
+        }
+    }
+
     proto_status_t status = proto_frame_parse(link->rx_raw,
                                               (uint32_t)result.out_len, &req);
     if ((status != PROTO_STATUS_OK) && (status != PROTO_STATUS_PARAM) &&
@@ -175,6 +201,13 @@ void proto_link_init(proto_link_t *link, proto_write_fn write,
                      sizeof(link->tx_ring));
 }
 
+void proto_link_set_event_handler(proto_link_t *link, proto_event_fn event)
+{
+    if (link == NULL)
+        return;
+    link->event = event;
+}
+
 void proto_link_feed(proto_link_t *link, const uint8_t *data, uint32_t size)
 {
     if ((link == NULL) || (data == NULL))
@@ -235,5 +268,59 @@ const proto_stats_t *proto_link_stats(const proto_link_t *link)
     if (link == NULL)
         return NULL;
     return &link->stats;
+}
+
+bool proto_link_send_frame(proto_link_t *link, const uint8_t *raw,
+                           uint32_t size)
+{
+    uint8_t encoded[PROTO_MAX_COBS_FRAME];
+    ring_buffer_size_t before;
+
+    if ((link == NULL) || (raw == NULL))
+        return false;
+    if ((size == 0) || (size > PROTO_MAX_RAW_FRAME))
+        return false;
+
+    cobsr_encode_result result =
+        cobsr_encode(encoded, sizeof(encoded), raw, size);
+    if (result.status != COBSR_ENCODE_OK)
+        return false;
+
+    before = ring_buffer_num_items(&link->tx_ring_rb);
+    if ((before + result.out_len + 1) > TX_RING_CAPACITY)
+        return false;
+
+    ring_buffer_queue_arr(&link->tx_ring_rb, (const char *)encoded,
+                          (ring_buffer_size_t)result.out_len);
+    ring_buffer_queue(&link->tx_ring_rb, (char)PROTO_DELIMITER);
+    return true;
+}
+
+bool proto_link_send_event(proto_link_t *link, proto_cmd_t cmd, uint8_t msg_id,
+                           uint8_t flags, uint8_t addr, proto_status_t status,
+                           const uint8_t *data, uint8_t len)
+{
+    proto_resp_t event;
+    ring_buffer_size_t before;
+
+    if (link == NULL)
+        return false;
+    if (len > PROTO_MAX_DATA)
+        return false;
+    if ((len != 0) && (data == NULL))
+        return false;
+
+    memset(&event, 0, sizeof(event));
+    event.cmd = cmd;
+    event.msg_id = (uint8_t)(msg_id & PROTO_MSG_ID_MASK);
+    event.flags = flags;
+    event.addr = addr;
+    event.len = len;
+    event.status = status;
+    event.data = data;
+
+    before = ring_buffer_num_items(&link->tx_ring_rb);
+    queue_response(link, &event);
+    return ring_buffer_num_items(&link->tx_ring_rb) != before;
 }
 //<<----------------------

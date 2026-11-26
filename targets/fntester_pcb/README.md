@@ -49,6 +49,20 @@ cmake --build build -j
   интерфейса `Serial` из `libs/serdev`;
 - `bsp/fntester_pcb/impl/i2c.cpp` — I2C2 на HAL и восстановление шины.
 
+## Slave-режим I2C2
+
+Устройство может быть слейвом на шине: `bsp/fntester_pcb/impl/i2c_slave.cpp`
+переводит I2C2 в режим прослушивания, включает `I2C2_IRQn` и
+`HAL_I2C_EnableListen_IT()`. Транзакции внешнего мастера уходят в
+`app/i2c/i2c_slave_service.c`, который формирует события протокола, а на
+время ожидания ответа хоста SCL удерживается (clock stretching,
+`NoStretchMode = DISABLE`).
+
+Переключение режима и адрес задаются командами `SET_MODE` и
+`SET_SLAVE_ADDR` (см. `docs/data/protocol.md`, раздел 7). Обработчик
+`I2C2_IRQHandler` определён в BSP и вызывается только в slave-режиме:
+в master-режиме прерывание отключено, обмен идёт через polling HAL.
+
 ## UART
 
 В текущей конфигурации CubeMX **USART не включён**, поэтому

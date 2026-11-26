@@ -16,12 +16,19 @@
 ## Возможности
 
 - команды протокола: `READ`, `WRITE`, `SCAN`, `INFO`, `PING`,
-  `BUS_RECOVER`, `STATS`;
+  `BUS_RECOVER`, `STATS`, настройка режима (`SET_MODE`,
+  `SET_SLAVE_ADDR`, `GET_CONFIG`);
+- режим **I2C slave**: внешний мастер обращается к устройству по
+  заданному адресу, транзакции туннелируются хосту (`SLAVE_EVENT` /
+  `SLAVE_DONE`) с clock stretching на время ответа;
 - 7-битная адресация, payload до 128 байт, коды ошибок шины
   (`NACK_ADDR`, `NACK_DATA`, `TIMEOUT`, `BUS_ERROR`, `OVERFLOW` и др.);
 - восстановление шины (BUS_RECOVER) и счётчики транзакций/ошибок;
 - эмулятор прошивки на хосте: два I2C-устройства (`0x0C`, `0x50`) и
-  транспорт через UNIX-сокет.
+  транспорт через UNIX-сокет;
+- хост-утилита `i2c-link-adapter`: мост «UNIX-сокет ↔ CDC» с
+  прозрачным и семантическим режимами для моделирования slave-устройства
+  (см. `utils/i2c-link-adapter/README.md`).
 
 ## Состав репозитория
 
@@ -35,7 +42,9 @@
 - `targets/` — исполняемые цели: `fntester_pcb/` (прошивка),
   `emu/` (эмулятор).
 - `test/` — юнит-тесты на хосте, имя цели — `utest_<name>`.
-- `utils/` — хост-утилиты (в прошивку не входят).
+- `utils/` — хост-утилиты (в прошивку не входят): `i2c-link-adapter`
+  — мост «UNIX-сокет ↔ CDC» для slave-режима (см.
+  `utils/i2c-link-adapter/README.md`).
 - `libs/` — TinyUSB, Ring-Buffer, cobs-c (git-сабмодули), serdev,
   ringfs, SoftTimer, RTT.
 - `docs/` — документация и описания форматов.
@@ -106,4 +115,5 @@ cmake --build build/fw
 - `AGENTS.md` — правила кода и структура проекта;
 - `docs/data/protocol.md` — протокол host ↔ I2C;
 - `targets/fntester_pcb/README.md` — прошивка и настройки CubeMX;
+- `utils/i2c-link-adapter/README.md` — хост-адаптер slave-режима;
 - `docs/` — остальная документация проекта.

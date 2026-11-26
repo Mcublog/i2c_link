@@ -35,6 +35,17 @@ extern "C"
                                      proto_resp_t *resp, void *ctx);
 
     /**
+     * @brief Обработчик кадра от устройства
+     *
+     * Вызывается для кадров ответного формата (бит направления в msg_id
+     * установлен): ответов на команды и событий slave-режима.
+     *
+     * @param evt разобранный кадр
+     * @param ctx контекст
+     */
+    typedef void (*proto_event_fn)(const proto_resp_t *evt, void *ctx);
+
+    /**
      * @brief Состояние канального уровня протокола
      */
     typedef struct
@@ -51,7 +62,8 @@ extern "C"
         ring_buffer_t tx_ring_rb; /**< кольцевой буфер передачи */
         proto_write_fn write; /**< колбэк передачи */
         proto_handler_fn handler; /**< обработчик запросов */
-        void *ctx; /**< контекст обработчика и передачи */
+        proto_event_fn event; /**< обработчик кадров от устройства */
+        void *ctx; /**< контекст обработчиков и передачи */
         proto_stats_t stats; /**< счётчики */
     } proto_link_t;
 
@@ -65,6 +77,20 @@ extern "C"
      */
     void proto_link_init(proto_link_t *link, proto_write_fn write,
                          proto_handler_fn handler, void *ctx);
+
+    /**
+     * @brief Назначить обработчик кадров от устройства
+     *
+     * Для кадров, приходящих с битом направления в msg_id (ответы и
+     * события slave-режима), вместо обработчика запросов вызывается
+     * этот колбэк. Если он не назначен, поведение прежнее: кадр
+     * отбрасывается, а на канал уходит ответ с ошибкой FRAME.
+     *
+     * @param link состояние
+     * @param event обработчик кадров от устройства (может быть NULL)
+     */
+    void proto_link_set_event_handler(proto_link_t *link,
+                                      proto_event_fn event);
 
     /**
      * @brief Принять порцию байтов из транспорта
@@ -88,6 +114,43 @@ extern "C"
      * @param link состояние
      */
     void proto_link_poll(proto_link_t *link);
+
+    /**
+     * @brief Поставить в очередь произвольный сырой кадр
+     *
+     * Кадр кодируется в COBS/R и уходит в транспорт при следующем
+     * вызове proto_link_poll(). Используется сторонами, которые сами
+     * собрали кадр (например, хост-адаптер slave-режима).
+     *
+     * @param link состояние
+     * @param raw сырой кадр (без COBS/R и терминатора)
+     * @param size размер кадра
+     * @return true - кадр поставлен в очередь
+     */
+    bool proto_link_send_frame(proto_link_t *link, const uint8_t *raw,
+                               uint32_t size);
+
+    /**
+     * @brief Поставить в очередь кадр, инициированный устройством
+     *
+     * Используется для событий slave-режима: направление в поле msg_id
+     * выставляется автоматически (бит 7), кадр уходит в транспорт при
+     * следующем вызове proto_link_poll().
+     *
+     * @param link состояние
+     * @param cmd команда-событие
+     * @param msg_id номер события (0..127, без бита направления)
+     * @param flags флаги события
+     * @param addr адрес slave, к которому относится событие
+     * @param status статус/результат события
+     * @param data payload (может быть NULL)
+     * @param len длина payload
+     * @return true - кадр поставлен в очередь
+     */
+    bool proto_link_send_event(proto_link_t *link, proto_cmd_t cmd,
+                               uint8_t msg_id, uint8_t flags, uint8_t addr,
+                               proto_status_t status, const uint8_t *data,
+                               uint8_t len);
 
     /**
      * @brief Получить счётчики протокола

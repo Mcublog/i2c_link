@@ -5,7 +5,7 @@
 
 //>>---------------------- Local
 /** @brief Версия протокола */
-#define PROTO_VERSION (1)
+#define PROTO_VERSION (2)
 /** @brief Сдвиг поля версии в байте ver_cmd */
 #define PROTO_VERSION_SHIFT (4)
 /** @brief Маска поля версии в байте ver_cmd */
@@ -48,10 +48,24 @@
 #define PROTO_INFO_SIZE (8)
 /** @brief Размер payload ответа STATS (байт) */
 #define PROTO_STATS_SIZE (14)
+/** @brief Размер payload ответа GET_CONFIG (байт) */
+#define PROTO_CONFIG_SIZE (2)
+/** @brief Размер payload события SLAVE_DONE (байт) */
+#define PROTO_SLAVE_DONE_SIZE (2)
 /** @brief Размер кольцевого буфера передачи (степень двойки) */
 #define PROTO_TX_RING_SIZE (512)
 /** @brief Лимит неудачных попыток отправки подряд */
 #define PROTO_TX_RETRY_LIMIT (500)
+
+/** @brief Режим работы моста: master (трансляция команд хоста) */
+#define PROTO_MODE_MASTER (0)
+/** @brief Режим работы моста: slave (обслуживание внешнего мастера) */
+#define PROTO_MODE_SLAVE (1)
+
+/** @brief Флаг события SLAVE_EVENT: была фаза записи от мастера */
+#define PROTO_EVENT_FLAG_WRITE (0x01)
+/** @brief Флаг события SLAVE_EVENT: далее ожидается фаза чтения */
+#define PROTO_EVENT_FLAG_READ (0x02)
 
 /**
  * @brief Команды протокола
@@ -65,7 +79,11 @@ typedef enum
     PROTO_CMD_PING = 0x05, /**< эхо-проверка канала */
     PROTO_CMD_BUS_RECOVER = 0x06, /**< освобождение шины */
     PROTO_CMD_STATS = 0x07, /**< счётчики ошибок */
-    PROTO_CMD_EVENT = 0x09 /**< первое значение диапазона событий */
+    PROTO_CMD_SET_MODE = 0x08, /**< переключить режим master/slave */
+    PROTO_CMD_SLAVE_EVENT = 0x09, /**< событие slave-режима (в обе стороны) */
+    PROTO_CMD_SLAVE_DONE = 0x0A, /**< завершение транзакции slave-режима */
+    PROTO_CMD_SET_SLAVE_ADDR = 0x0B, /**< задать адрес slave */
+    PROTO_CMD_GET_CONFIG = 0x0C /**< текущий режим и адрес slave */
 } proto_cmd_t;
 
 /**
@@ -114,6 +132,14 @@ typedef struct
     proto_status_t status; /**< код результата */
     const uint8_t *data; /**< payload ответа (может быть NULL) */
 } proto_resp_t;
+
+/**
+ * @brief Разобранный кадр ответного формата (устройство -> host)
+ *
+ * События slave-режима (`SLAVE_EVENT`, `SLAVE_DONE`) имеют тот же
+ * формат, что и ответы на команды, поэтому структура общая.
+ */
+typedef proto_resp_t proto_event_t;
 
 /**
  * @brief Счётчики протокола
