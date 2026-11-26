@@ -2,28 +2,59 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [master, develop]
   pull_request:
+    branches: [master, develop]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
-  build-and-test:
+  host:
+    name: Host (emu + utils + tests)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: recursive
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y cmake gcc g++
-
-      - name: Configure (desktop)
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
-
-      - name: Build (desktop + emu + utils)
-        run: cmake --build build -j
+      - name: Build emulator and utilities
+        run: make emuls utils
 
       - name: Run unit tests
-        run: ctest --test-dir build --output-on-failure
+        run: make utest
+
+  firmware:
+    name: Firmware (fntester_pcb)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container:
+      image: mcublog/embedded_gcc_cmake:14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Build firmware
+        run: make clean && make firmwares
+
+      - name: Get firmware version
+        id: fw_version
+        run: echo "version=$(bash scripts/get_version.sh)" >> "$GITHUB_OUTPUT"
+
+      - name: Upload firmware
+        uses: actions/upload-artifact@v7
+        with:
+          name: fntester_pcb_${{ steps.fw_version.outputs.version }}
+          path: |
+            build/output/*.hex
+            build/output/*.bin
+          if-no-files-found: error

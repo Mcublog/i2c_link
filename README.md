@@ -1,5 +1,7 @@
 # i2c_link
 
+[![CI](https://github.com/Mcublog/i2c_link/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/Mcublog/i2c_link/actions/workflows/ci.yml)
+
 Мост **USB ↔ I2C** на плате **fntester_pcb** (STM32F072CB): превращает
 компьютер в мастер шины I2C — чтение и запись регистров устройств,
 сканирование адресов, восстановление зависшей шины.
